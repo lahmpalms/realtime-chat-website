@@ -1,0 +1,113 @@
+{
+  "rules": {
+    "chatRoom": {
+      "users": {
+        "$userId": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['id', 'name', 'joinedAt', 'isTyping', 'lastSeen', 'color'])",
+          "id": {
+            ".validate": "newData.isString() && newData.val() == $userId"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+          },
+          "joinedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "isTyping": {
+            ".validate": "newData.isBoolean()"
+          },
+          "lastSeen": {
+            ".validate": "newData.isNumber()"
+          },
+          "color": {
+            ".validate": "newData.isString()"
+          },
+          "isOnline": {
+            ".validate": "newData.isBoolean()"
+          },
+          "connectionState": {
+            ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'offline' || newData.val() == 'away')"
+          }
+        }
+      },
+      "messages": {
+        "$messageId": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['id', 'userId', 'userName', 'userColor', 'text', 'timestamp'])",
+          "id": {
+            ".validate": "newData.isString()"
+          },
+          "userId": {
+            ".validate": "newData.isString()"
+          },
+          "userName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+          },
+          "userColor": {
+            ".validate": "newData.isString()"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+          },
+          "timestamp": {
+            ".validate": "newData.isNumber()"
+          },
+          "emoji": {
+            ".validate": "newData.isString()"
+          }
+        }
+      },
+      "typing": {
+        "$userId": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['userId', 'userName', 'timestamp'])",
+          "userId": {
+            ".validate": "newData.isString() && newData.val() == $userId"
+          },
+          "userName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+          },
+          "timestamp": {
+            ".validate": "newData.isNumber()"
+          }
+        }
+      },
+      "presence": {
+        "$userId": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['isOnline', 'lastSeen', 'connectionState'])",
+          "isOnline": {
+            ".validate": "newData.isBoolean()"
+          },
+          "lastSeen": {
+            ".validate": "newData.isNumber()"
+          },
+          "connectionState": {
+            ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'offline' || newData.val() == 'away')"
+          }
+        }
+      },
+      "metadata": {
+        ".read": true,
+        ".write": true,
+        "currentUserCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "maxUsers": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    ".info": {
+      ".read": true
+    }
+  }
+}

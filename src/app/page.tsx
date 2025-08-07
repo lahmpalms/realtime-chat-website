@@ -1,103 +1,186 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import NameInputForm from '@/components/forms/NameInputForm';
+import { ChatContainer } from '@/components/chat/ChatContainer';
+import { Header } from '@/components/layout/Header';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { LayoutWrapper } from '@/contexts/LayoutContext';
+
+import { useChat } from '@/lib/hooks/useChat';
+import { useUser } from '@/contexts/UserContext';
+import { MAX_USERS } from '@/lib/types';
+import { toast } from 'sonner';
+
+// Enhanced toast configuration for better UX
+const enhancedToast = {
+  success: (message: string, options?: {
+    description?: string;
+    action?: { label: string; onClick: () => void; altText?: string };
+    duration?: number;
+  }) => {
+    return toast.success(message, {
+      description: options?.description,
+      duration: options?.duration ?? 4000,
+      action: options?.action && {
+        label: options.action.label,
+        onClick: options.action.onClick,
+      },
+    });
+  },
+
+  error: (message: string, options?: {
+    description?: string;
+    action?: { label: string; onClick: () => void; altText?: string };
+    duration?: number;
+    persistent?: boolean;
+  }) => {
+    return toast.error(message, {
+      description: options?.description,
+      duration: options?.persistent ? Infinity : 6000, // Longer for errors
+      action: options?.action && {
+        label: options.action.label,
+        onClick: options.action.onClick,
+      },
+    });
+  },
+
+  loading: (message: string, options?: {
+    description?: string;
+  }) => {
+    return toast.loading(message, {
+      description: options?.description,
+      duration: Infinity,
+    });
+  }
+};
+
+// Context-aware toast functions
+const contextAwareToast = {
+  joinSuccess: (name: string) => {
+    enhancedToast.success(`Welcome to the chat, ${name}!`, {
+      description: "You're now connected and can start messaging with others.",
+      duration: 5000, // Longer for important welcome message
+    });
+  },
+
+  joinError: (retryFn: () => void) => {
+    enhancedToast.error("Failed to join chat", {
+      description: "Please check your connection and try again.",
+      action: {
+        label: "Retry",
+        onClick: retryFn,
+        altText: "Attempt to join chat again"
+      },
+      duration: 8000, // Longer for errors with actions
+    });
+  },
+
+  roomFull: () => {
+    enhancedToast.error(`Chat room is full`, {
+      description: `Maximum ${MAX_USERS} users allowed. Please try again later.`,
+      duration: 6000,
+    });
+  },
+
+  leaveSuccess: () => {
+    enhancedToast.success("You left the chat", {
+      description: "You can rejoin anytime by entering your name.",
+      duration: 3000,
+    });
+  },
+
+  connectionError: (retryFn: () => void) => {
+    enhancedToast.error("Connection lost", {
+      description: "Attempting to reconnect automatically...",
+      action: {
+        label: "Reconnect Now",
+        onClick: retryFn,
+        altText: "Manually reconnect to chat"
+      },
+      persistent: true, // Keep until user dismisses or reconnects
+    });
+  }
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { currentUser, hasJoined, joinChat, leaveChat } = useUser();
+  const { joinRoom, users, isConnected, error } = useChat();
+  const [isJoining, setIsJoining] = useState(false);
+  const wasConnectedRef = useRef(false);
+  const hasShownConnectionErrorRef = useRef(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleJoinChat = async (name: string) => {
+    setIsJoining(true);
+    
+    try {
+      const user = await joinRoom(name);
+      if (user) {
+        joinChat(user);
+        contextAwareToast.joinSuccess(name);
+      } else {
+        // Check if it's a room full error or other error
+        if (error && error.includes('full')) {
+          contextAwareToast.roomFull();
+        } else {
+          contextAwareToast.joinError(() => handleJoinChat(name));
+        }
+      }
+    } catch (error) {
+      console.error('Join chat error:', error);
+      contextAwareToast.joinError(() => handleJoinChat(name));
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleLeaveChat = () => {
+    leaveChat();
+    contextAwareToast.leaveSuccess();
+  };
+
+  // Handle connection status changes
+  useEffect(() => {
+    if (hasJoined) {
+      if (isConnected) {
+        // Connection established or restored
+        wasConnectedRef.current = true;
+        hasShownConnectionErrorRef.current = false;
+      } else if (wasConnectedRef.current && !hasShownConnectionErrorRef.current) {
+        // Connection lost after being connected
+        hasShownConnectionErrorRef.current = true;
+        contextAwareToast.connectionError(() => {
+          window.location.reload();
+        });
+      }
+    }
+  }, [isConnected, hasJoined]);
+
+  if (!hasJoined || !currentUser) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] w-full relative">
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <NameInputForm onSubmit={handleJoinChat} isLoading={isJoining} />
+      </div>
+    );
+  }
+
+  return (
+    <LayoutWrapper>
+      <Header
+        userCount={users.length}
+        isConnected={isConnected}
+        currentUserName={currentUser.name}
+        onLeave={handleLeaveChat}
+        variant="default"
+        showNavigation={true}
+      />
+      <div className="flex-1 min-h-0">
+        <ChatContainer currentUser={currentUser} onLeave={handleLeaveChat} />
+      </div>
+
+    </LayoutWrapper>
   );
 }

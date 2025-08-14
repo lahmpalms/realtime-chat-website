@@ -10,6 +10,7 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ isConnected, isLoading, error }: ConnectionStatusProps) {
+  // Prefer explicit connection error messaging first
   if (isLoading) {
     return (
       <Alert className="text-xs sm:text-sm">

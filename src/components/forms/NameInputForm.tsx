@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-// Mock constants and utilities for demo
-const MAX_NAME_LENGTH = 30;
+import { MAX_NAME_LENGTH } from '@/lib/types';
 
 interface NameInputFormProps {
   onSubmit: (name: string) => void;
   isLoading?: boolean;
 }
 
-export default function NameInputForm({ onSubmit = (name) => console.log('Submitted:', name), isLoading = false }: NameInputFormProps) {
+export default function NameInputForm({ onSubmit, isLoading = false }: NameInputFormProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isFocused, setIsFocused] = useState(false);

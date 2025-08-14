@@ -1,26 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useChat } from "@/lib/hooks/useChat";
 import { useTyping } from "@/lib/hooks/useTyping";
 import { User } from "@/lib/types";
+import { useStablePresence } from "@/lib/hooks/useStablePresence";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+// Removed unused sidebar UI imports
 import {
   ResponsiveChatWrapper,
   ResponsiveChatContent,
-  ResponsiveSidebar,
   ResponsiveMessageContainer,
   ResponsiveInputContainer,
   ResponsiveStatusContainer,
@@ -34,7 +26,7 @@ interface ChatContainerProps {
 export function ChatContainer({ currentUser }: ChatContainerProps) {
   const {
     messages,
-    users,
+    // users,
     typing,
     isConnected,
     isLoading,
@@ -46,18 +38,9 @@ export function ChatContainer({ currentUser }: ChatContainerProps) {
   } = useChat();
 
   const [messageRateLimit, setMessageRateLimit] = useState<number[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const typingHook = useTyping(currentUser.id, currentUser.name);
-  // Temporarily disable stable presence to test
-  // const stablePresenceHook = useStablePresence(currentUser);
-  const stablePresenceHook = useMemo(
-    () => ({
-      cleanup: () => {},
-      updatePresenceState: () => {},
-      hasOtherActiveTabs: () => false,
-    }),
-    []
-  );
+  const stablePresenceHook = useStablePresence(currentUser);
 
   // Store current user info in refs to prevent unnecessary re-renders
   const currentUserRef = useRef(currentUser);

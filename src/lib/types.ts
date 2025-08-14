@@ -1,5 +1,6 @@
 export interface User {
   id: string;
+  uid?: string; // Firebase Auth UID (same as id when using Auth)
   name: string;
   joinedAt: number;
   isTyping: boolean;

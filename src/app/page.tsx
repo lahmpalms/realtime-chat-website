@@ -104,7 +104,7 @@ const contextAwareToast = {
 };
 
 export default function Home() {
-  const { currentUser, hasJoined, joinChat, leaveChat } = useUser();
+  const { currentUser, hasJoined, joinChat, leaveChat, isAuthLoading, authError } = useUser();
   const { joinRoom, users, isConnected, error } = useChat();
   const [isJoining, setIsJoining] = useState(false);
   const wasConnectedRef = useRef(false);
@@ -155,6 +155,22 @@ export default function Home() {
       }
     }
   }, [isConnected, hasJoined]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] w-full grid place-items-center">
+        <div className="text-sm text-muted-foreground">Initializing secure session…</div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] w-full grid place-items-center">
+        <div className="text-sm text-red-500">Authentication error: {authError}</div>
+      </div>
+    );
+  }
 
   if (!hasJoined || !currentUser) {
     return (

@@ -5,6 +5,7 @@ import { ref, set, onValue, off, get } from 'firebase/database';
 import { database } from '@/lib/firebase';
 import { useChat as useChatContext } from '@/contexts/ChatContext';
 import { User, Message, TypingStatus, USER_COLORS, USER_TIMEOUT, GRACE_PERIOD } from '@/lib/types';
+import { ensureAnonymousAuth, setDisplayName } from '@/lib/auth';
 
 export function useChat() {
   const context = useChatContext();
@@ -22,14 +23,6 @@ export function useChat() {
 
   const messageListenersRef = useRef<Set<() => void>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  const generateUserId = useCallback(() => {
-    // Generate a safe user ID with only alphanumeric characters
-    const timestamp = Date.now();
-    const randomPart = Math.random().toString(36).replace('0.', '').slice(0, 8);
-    const userId = `user_${timestamp}_${randomPart}`;
-    return userId;
-  }, []);
 
   const getRandomColor = useCallback(() => {
     return USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
@@ -52,6 +45,14 @@ export function useChat() {
       setLoading(true);
       setError(null);
 
+      // Ensure we are authenticated (anonymous acceptable)
+      const fbUser = await ensureAnonymousAuth();
+      const userId = fbUser.uid;
+      // Try to reflect displayName for better UX
+      if (!fbUser.displayName || fbUser.displayName !== sanitizedUserName) {
+        setDisplayName(sanitizedUserName).catch(() => {});
+      }
+
       // Check current user count before joining
       const usersPath = 'chatRoom/users';
       const usersRef = ref(database!, usersPath);
@@ -64,13 +65,12 @@ export function useChat() {
         setLoading(false);
         return null;
       }
-
-      const userId = generateUserId();
       const userColor = getRandomColor();
       const timestamp = Date.now();
       
       const user: User = {
         id: userId,
+        uid: userId,
         name: sanitizedUserName,
         joinedAt: timestamp,
         isTyping: false,
@@ -123,7 +123,7 @@ export function useChat() {
       setLoading(false);
       return null;
     }
-  }, [generateUserId, getRandomColor, setError, setLoading]);
+  }, [getRandomColor, setError, setLoading]);
 
   const leaveRoom = useCallback(async (userId: string) => {
     if (!database) return;
@@ -222,6 +222,14 @@ export function useChat() {
 
     const cleanupFunctions: (() => void)[] = [];
 
+    // Firebase connection status listener
+    const infoConnectedRef = ref(database!, '.info/connected');
+    const infoUnsub = onValue(infoConnectedRef, (snap) => {
+      const connected = snap.val() === true;
+      setConnectionStatus(connected);
+    });
+    cleanupFunctions.push(() => off(infoConnectedRef, 'value', infoUnsub));
+
     // Users listener
     const usersRef = ref(database!, 'chatRoom/users');
     
@@ -257,10 +265,8 @@ export function useChat() {
       } else {
         setUsers([]);
       }
-      setConnectionStatus(true);
     }, (error) => {
       setError(error.message);
-      setConnectionStatus(false);
     });
 
     cleanupFunctions.push(() => off(usersRef, 'value', usersUnsubscribe));

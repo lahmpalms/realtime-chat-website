@@ -1,5 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
+import { getAuth, setPersistence, browserLocalPersistence, Auth } from 'firebase/auth';
+import { getFunctions, Functions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,20 +16,26 @@ const firebaseConfig = {
 // Initialize Firebase only if it hasn't been initialized and we have valid config
 let app: FirebaseApp | null;
 let database: Database | null;
+let auth: Auth | null;
+let functions: Functions | null;
 
 if (typeof window !== 'undefined' && firebaseConfig.projectId && firebaseConfig.databaseURL) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   database = getDatabase(app);
+  auth = getAuth(app);
   
-  console.log('🔥 Firebase initialized with projectId:', firebaseConfig.projectId);
-  console.log('🔗 Database URL:', firebaseConfig.databaseURL);
-  console.log('🔓 Using unauthenticated access (demo mode)');
+  // Persist auth session in the browser
+  setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Ignore persistence errors; auth will fallback to in-memory
+  });
+  functions = getFunctions(app);
 } else {
   // Create null objects for server-side rendering
-  console.log('⚠️ Firebase not initialized - missing config or running on server');
   app = null;
   database = null;
+  auth = null;
+  functions = null;
 }
 
-export { database };
+export { database, auth, functions };
 export default app;

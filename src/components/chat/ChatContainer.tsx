@@ -111,7 +111,7 @@ export function ChatContainer({ currentUser }: ChatContainerProps) {
     <ResponsiveChatWrapper>
       <ResponsiveChatContent>
         {/* Connection Status */}
-        {!isConnected && (
+        {(!isConnected || isLoading || error) && (
           <ResponsiveStatusContainer>
             <ConnectionStatus
               isConnected={isConnected}

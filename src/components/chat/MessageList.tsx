@@ -5,7 +5,6 @@ import { MessageItem } from "./MessageItem";
 import { TypingIndicator } from "./TypingIndicator";
 import { Message, TypingStatus } from "@/lib/types";
 import { usePrefersReducedMotion } from "@/lib/hooks/useResponsive";
-import { A11Y_UTILS } from "@/lib/responsive";
 import { cn } from "@/lib/utils";
 
 interface MessageListProps {
@@ -98,30 +97,30 @@ export function MessageList({
       aria-live="polite"
       aria-atomic="false"
     >
-      <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 lg:space-y-4 pb-4">
+      <div className="flex-1 overflow-y-auto space-y-1 xs:space-y-2 sm:space-y-3 lg:space-y-4 pb-4 px-1 xs:px-2 sm:px-0">
         {messages.length === 0 ? (
           <div
             className={cn(
-              "flex flex-col items-center justify-center text-center",
-              "text-muted-foreground py-12 sm:py-16 lg:py-20",
-              "space-y-3 sm:space-y-4"
+              "flex flex-col items-center justify-center text-center min-h-[50vh]",
+              "text-muted-foreground py-8 xs:py-12 sm:py-16 lg:py-20",
+              "space-y-2 xs:space-y-3 sm:space-y-4 px-4"
             )}
             role="status"
             aria-label="No messages in chat"
           >
             <div
-              className="text-4xl sm:text-5xl lg:text-6xl opacity-50"
+              className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl opacity-50 animate-pulse"
               aria-hidden="true"
             >
               💬
             </div>
-            <div className="space-y-2">
-              <p className="text-base sm:text-lg lg:text-xl font-medium">
+            <div className="space-y-1 xs:space-y-2 max-w-sm">
+              <p className="text-sm xs:text-base sm:text-lg lg:text-xl font-medium">
                 No messages yet
               </p>
-              <p className="text-sm sm:text-base text-muted-foreground/80">
+              <p className="text-xs xs:text-sm sm:text-base text-muted-foreground/80">
                 Be the first to say hello!{" "}
-                <span className="text-lg" aria-hidden="true">
+                <span className="text-base xs:text-lg animate-bounce inline-block" aria-hidden="true">
                   👋
                 </span>
               </p>
@@ -140,10 +139,10 @@ export function MessageList({
                 <div
                   key={message.id}
                   className={cn(
-                    "transition-all duration-200",
+                    "transition-all duration-200 ease-out",
                     prefersReducedMotion && "transition-none",
-                    isFirstInGroup && "mt-4 sm:mt-6 first:mt-0",
-                    isLastInGroup && "mb-2 sm:mb-3"
+                    isFirstInGroup && "mt-2 xs:mt-3 sm:mt-4 lg:mt-6 first:mt-0",
+                    isLastInGroup && "mb-1 xs:mb-2 sm:mb-3"
                   )}
                   role="article"
                   aria-label={`Message from ${message.userName}`}

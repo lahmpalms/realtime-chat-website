@@ -16,9 +16,10 @@ export function ResponsiveChatWrapper({ children, className = '' }: ResponsiveCh
   return (
     <div 
       className={cn(
-        'flex h-full w-full bg-background',
+        'flex h-full w-full bg-gradient-to-b from-background to-background/95',
         'transition-all duration-300 ease-in-out',
         isMobile ? 'flex-col' : 'flex-row',
+        'relative overflow-hidden',
         PERFORMANCE.contain,
         prefersReducedMotion && A11Y_UTILS.reducedMotion,
         className
@@ -43,6 +44,9 @@ export function ResponsiveChatContent({ children, className = '' }: { children: 
       className={cn(
         'flex flex-col min-w-0 min-h-0 h-full flex-1',
         'transition-all duration-300 ease-in-out',
+        'bg-background/50 backdrop-blur-sm',
+        'border border-border/50 rounded-lg m-1 xs:m-2',
+        'shadow-sm hover:shadow-md',
         PERFORMANCE.contain,
         prefersReducedMotion && A11Y_UTILS.reducedMotion,
         className
@@ -91,9 +95,11 @@ export function ResponsiveMessageContainer({ children, className = '' }: { child
       className={cn(
         'flex-1 min-h-0 relative',
         'overflow-y-auto overscroll-contain',
+        'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
         PERFORMANCE.scroll,
-        isMobile ? 'p-3 sm:p-4' : 'p-4 lg:p-6',
-        'focus:outline-none',
+        isMobile ? 'p-2 xs:p-3 sm:p-4' : 'p-4 lg:p-6',
+        'focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg',
+        'hover:bg-muted/5 transition-colors duration-200',
         className
       )}
       role="log"
@@ -108,7 +114,7 @@ export function ResponsiveMessageContainer({ children, className = '' }: { child
         scrollBehavior: prefersReducedMotion ? 'auto' : 'smooth'
       }}
     >
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-2 xs:space-y-3 sm:space-y-4">
         {children}
       </div>
     </div>
@@ -122,10 +128,12 @@ export function ResponsiveInputContainer({ children, className = '' }: { childre
   return (
     <div 
       className={cn(
-        'border-t border-border bg-background/95 backdrop-blur-sm',
+        'border-t border-border/50 bg-background/95 backdrop-blur-sm',
         'flex-shrink-0 transition-all duration-200',
-        isMobile ? 'p-3 sm:p-4' : 'p-4 lg:p-6',
+        'rounded-b-lg',
+        isMobile ? 'p-2 xs:p-3 sm:p-4' : 'p-4 lg:p-6',
         'safe-area-inset-bottom',
+        'shadow-sm',
         PERFORMANCE.contain,
         prefersReducedMotion && A11Y_UTILS.reducedMotion,
         className
@@ -146,9 +154,11 @@ export function ResponsiveStatusContainer({ children, className = '' }: { childr
   return (
     <div 
       className={cn(
-        'border-b border-border bg-muted/50 flex-shrink-0',
+        'border-b border-border/50 bg-muted/30 flex-shrink-0',
         'transition-all duration-200',
-        isMobile ? 'p-3 sm:p-4' : 'p-4 lg:p-6',
+        'rounded-t-lg backdrop-blur-sm',
+        isMobile ? 'p-2 xs:p-3 sm:p-4' : 'p-4 lg:p-6',
+        'shadow-sm',
         prefersReducedMotion && A11Y_UTILS.reducedMotion,
         className
       )}

@@ -86,7 +86,7 @@ export function Header({
 
         {/* Right side - User count and actions */}
         {showNavigation && (
-          <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 flex-shrink-0">sa
+          <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 flex-shrink-0">
             {/* User info and leave button */}
             {currentUserName && (
               <>

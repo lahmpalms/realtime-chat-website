@@ -132,12 +132,12 @@ export function FirebaseTestPanel() {
       <CardContent>
         <div className="space-y-2">
           <div className="text-sm text-muted-foreground">
-            This panel tests basic Firebase operations to identify where the "Invalid token in path" error occurs.
+            This panel tests basic Firebase operations to identify where the &quot;Invalid token in path&quot; error occurs.
           </div>
           <div className="border rounded p-3 bg-muted/20 max-h-96 overflow-y-auto">
             {testResults.length === 0 ? (
               <div className="text-center text-muted-foreground py-4">
-                Click "Run Tests" to check Firebase connectivity
+                Click &quot;Run Tests&quot; to check Firebase connectivity
               </div>
             ) : (
               <div className="space-y-1">

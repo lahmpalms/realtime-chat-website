@@ -2,20 +2,21 @@
   "name": "functions",
   "scripts": {
     "build": "tsc -p .",
-    "watch": "tsc -w -p ."
+    "watch": "tsc -w -p .",
+    "typecheck": "tsc -p . --noEmit"
   },
   "main": "lib/index.js",
   "dependencies": {
-    "firebase-admin": "^12.6.0",
-    "firebase-functions": "^6.0.0",
-    "bad-words": "^3.0.4"
+    "bad-words": "^3.0.4",
+    "firebase-admin": "14.5.0",
+    "firebase-functions": "7.4.0"
   },
   "devDependencies": {
+    "@types/bad-words": "3.0.3",
     "typescript": "^5.4.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22"
   },
   "private": true
 }
-

@@ -22,7 +22,7 @@ interface ResponsiveBreakpoints {
 
 // Global singleton for performance optimization
 let globalResizeObserver: ResizeObserver | null = null;
-let globalListeners: Set<(width: number, height: number) => void> = new Set();
+const globalListeners: Set<(width: number, height: number) => void> = new Set();
 let currentWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
 let currentHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
 
@@ -69,7 +69,7 @@ export function useResponsive(): ResponsiveBreakpoints {
   }, []);
 
   // Memoize all computed values for performance
-  const breakpointInfo = useMemo(() => {
+  const breakpointInfo = useMemo<ResponsiveBreakpoints>(() => {
     const { width, height } = dimensions;
     
     // Breakpoint detection based on our standard breakpoints

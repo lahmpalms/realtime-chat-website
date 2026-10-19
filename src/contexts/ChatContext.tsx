@@ -7,9 +7,10 @@ const initialState: ChatState = {
   currentUser: null,
   users: [],
   messages: [],
+  hasLoadedMessages: false,
   typing: [],
   isConnected: false,
-  isLoading: false,
+  isLoading: true,
   error: null,
 };
 
@@ -22,7 +23,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, users: action.payload };
     
     case 'SET_MESSAGES':
-      return { ...state, messages: action.payload };
+      return { ...state, messages: action.payload, hasLoadedMessages: true };
     
     case 'ADD_MESSAGE':
       return { 

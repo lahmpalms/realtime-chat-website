@@ -1,62 +1,58 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": false,
+    ".write": false,
     "chatRoom": {
       "users": {
+        ".read": "auth != null && root.child('chatRoom/users').child(auth.uid).child('accessUntil').val() > now && root.child('chatRoom/users').child(auth.uid).child('connections').hasChildren() && query.orderByChild === \"accessUntil\" && query.limitToLast != null && query.limitToLast <= 20",
         "$userId": {
-          ".read": "auth != null",
-          ".write": "auth != null && $userId === auth.uid",
-          ".validate": "newData.hasChildren(['id','name','joinedAt','isTyping','lastSeen','color']) && newData.child('id').val() === auth.uid",
-          "id": { ".validate": "newData.isString() && newData.val() == $userId" },
-          "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20" },
-          "joinedAt": { ".validate": "newData.isNumber()" },
-          "isTyping": { ".validate": "newData.isBoolean()" },
-          "lastSeen": { ".validate": "newData.isNumber()" },
-          "color": { ".validate": "newData.isString() && newData.val().matches('^#[0-9A-Fa-f]{6}$')" },
-          "isOnline": { ".validate": "newData.isBoolean()" },
-          "connectionState": { ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'offline' || newData.val() == 'away')" }
-        }
-      },
-      "messages": {
-        "$messageId": {
-          ".read": "auth != null",
-          ".write": "auth != null && newData.child('userId').val() == auth.uid",
-          ".validate": "newData.hasChildren(['id','userId','userName','userColor','text','timestamp'])",
-          "id": { ".validate": "newData.isString()" },
-          "userId": { ".validate": "newData.isString() && newData.val() == auth.uid" },
-          "userName": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20" },
-          "userColor": { ".validate": "newData.isString()" },
-          "text": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500" },
-          "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
-          "emoji": { ".validate": "newData.isString()" }
-        }
-      },
-      "typing": {
-        "$userId": {
-          ".read": "auth != null",
-          ".write": "auth != null && $userId == auth.uid",
-          ".validate": "newData.hasChildren(['userId','userName','timestamp']) && newData.child('userId').val() == auth.uid",
-          "userId": { ".validate": "newData.isString() && newData.val() == $userId" },
-          "userName": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20" },
-          "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" }
-        }
-      },
-      "presence": {
-        "$userId": {
-          ".read": "auth != null",
-          ".write": "auth != null && $userId == auth.uid",
-          ".validate": "newData.hasChildren(['isOnline','lastSeen','connectionState'])",
-          "isOnline": { ".validate": "newData.isBoolean()" },
-          "lastSeen": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
-          "connectionState": { ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'offline' || newData.val() == 'away')" }
-        }
+          ".read": "auth != null && $userId === auth.uid",
+          "connections": {
+            "$connectionId": {
+              ".write": "auth != null && $userId === auth.uid && (!newData.exists() || (data.exists() && data.child('lastSeen').val() + 90000 > now))",
+              ".validate": "newData.hasChildren(['joinedAt','lastSeen','state','isTyping','typingAt']) && newData.child('joinedAt').val() === data.child('joinedAt').val() && newData.child('lastSeen').val() === data.child('lastSeen').val()",
+              "joinedAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "lastSeen": {
+                ".validate": "newData.isNumber()"
+              },
+              "state": {
+                ".validate": "newData.val() === 'online' || newData.val() === 'away'"
+              },
+              "isTyping": {
+                ".validate": "newData.isBoolean()"
+              },
+              "typingAt": {
+                ".validate": "newData.isNumber() && newData.val() >= now - 60000 && newData.val() <= now + 60000"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        ".indexOn": [
+          "accessUntil"
+        ]
       },
       "metadata": {
-        ".read": "auth != null",
-        ".write": "auth != null && false"  
+        ".read": "auth != null && root.child('chatRoom/users').child(auth.uid).child('accessUntil').val() > now && root.child('chatRoom/users').child(auth.uid).child('connections').hasChildren()",
+        ".write": false
       }
     },
-    ".info": { ".read": true }
+    "chatMessages": {
+      ".read": "auth != null && root.child('chatRoom/users').child(auth.uid).child('accessUntil').val() > now && root.child('chatRoom/users').child(auth.uid).child('connections').hasChildren() && query.orderByChild === \"timestamp\" && query.limitToLast != null && query.limitToLast <= 50",
+      ".write": false,
+      ".indexOn": [
+        "timestamp"
+      ]
+    },
+    "chatMessageAcks": {
+      ".indexOn": ".value"
+    },
+    "chatDeletionAcks": {
+      ".indexOn": ".value"
+    }
   }
 }

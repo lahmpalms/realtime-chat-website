@@ -9,15 +9,17 @@ export interface AuthState {
   error: string | null;
 }
 
+let anonymousSignIn: Promise<FirebaseUser> | null = null;
+
 export async function ensureAnonymousAuth(): Promise<FirebaseUser> {
   if (!auth) throw new Error('Firebase not initialized');
 
-  if (auth.currentUser) {
-    return auth.currentUser;
+  await auth.authStateReady();
+  if (auth.currentUser) return auth.currentUser;
+  if (!anonymousSignIn) {
+    anonymousSignIn = signInAnonymously(auth).then(credential => credential.user).finally(() => { anonymousSignIn = null; });
   }
-
-  const cred = await signInAnonymously(auth);
-  return cred.user;
+  return anonymousSignIn;
 }
 
 export function subscribeAuthState(

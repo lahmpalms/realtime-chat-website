@@ -1,202 +1,51 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import NameInputForm from '@/components/forms/NameInputForm';
 import { ChatContainer } from '@/components/chat/ChatContainer';
 import { Header } from '@/components/layout/Header';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { Button } from '@/components/ui/button';
 import { LayoutWrapper } from '@/contexts/LayoutContext';
-
 import { useChat } from '@/lib/hooks/useChat';
 import { useUser } from '@/contexts/UserContext';
 import { MAX_USERS } from '@/lib/types';
-import { toast } from 'sonner';
-
-// Enhanced toast configuration for better UX
-const enhancedToast = {
-  success: (message: string, options?: {
-    description?: string;
-    action?: { label: string; onClick: () => void; altText?: string };
-    duration?: number;
-  }) => {
-    return toast.success(message, {
-      description: options?.description,
-      duration: options?.duration ?? 4000,
-      action: options?.action && {
-        label: options.action.label,
-        onClick: options.action.onClick,
-      },
-    });
-  },
-
-  error: (message: string, options?: {
-    description?: string;
-    action?: { label: string; onClick: () => void; altText?: string };
-    duration?: number;
-    persistent?: boolean;
-  }) => {
-    return toast.error(message, {
-      description: options?.description,
-      duration: options?.persistent ? Infinity : 6000, // Longer for errors
-      action: options?.action && {
-        label: options.action.label,
-        onClick: options.action.onClick,
-      },
-    });
-  },
-
-  loading: (message: string, options?: {
-    description?: string;
-  }) => {
-    return toast.loading(message, {
-      description: options?.description,
-      duration: Infinity,
-    });
-  }
-};
-
-// Context-aware toast functions
-const contextAwareToast = {
-  joinSuccess: (name: string) => {
-    enhancedToast.success(`Welcome to the chat, ${name}!`, {
-      description: "You're now connected and can start messaging with others.",
-      duration: 5000, // Longer for important welcome message
-    });
-  },
-
-  joinError: (retryFn: () => void) => {
-    enhancedToast.error("Failed to join chat", {
-      description: "Please check your connection and try again.",
-      action: {
-        label: "Retry",
-        onClick: retryFn,
-        altText: "Attempt to join chat again"
-      },
-      duration: 8000, // Longer for errors with actions
-    });
-  },
-
-  roomFull: () => {
-    enhancedToast.error(`Chat room is full`, {
-      description: `Maximum ${MAX_USERS} users allowed. Please try again later.`,
-      duration: 6000,
-    });
-  },
-
-  leaveSuccess: () => {
-    enhancedToast.success("You left the chat", {
-      description: "You can rejoin anytime by entering your name.",
-      duration: 3000,
-    });
-  },
-
-  connectionError: (retryFn: () => void) => {
-    enhancedToast.error("Connection lost", {
-      description: "Attempting to reconnect automatically...",
-      action: {
-        label: "Reconnect Now",
-        onClick: retryFn,
-        altText: "Manually reconnect to chat"
-      },
-      persistent: true, // Keep until user dismisses or reconnects
-    });
-  }
-};
 
 export default function Home() {
   const { currentUser, hasJoined, joinChat, leaveChat, isAuthLoading, authError } = useUser();
-  const { joinRoom, users, isConnected, error } = useChat();
+  const { users, isConnected, resetState } = useChat();
   const [isJoining, setIsJoining] = useState(false);
-  const wasConnectedRef = useRef(false);
-  const hasShownConnectionErrorRef = useRef(false);
-
+  const [joinError, setJoinError] = useState('');
+  useEffect(() => { if (!hasJoined) resetState(); }, [hasJoined, resetState]);
   const handleJoinChat = async (name: string) => {
     setIsJoining(true);
-    
-    try {
-      const user = await joinRoom(name);
-      if (user) {
-        joinChat(user);
-        contextAwareToast.joinSuccess(name);
-      } else {
-        // Check if it's a room full error or other error
-        if (error && error.includes('full')) {
-          contextAwareToast.roomFull();
-        } else {
-          contextAwareToast.joinError(() => handleJoinChat(name));
-        }
-      }
-    } catch (error) {
-      console.error('Join chat error:', error);
-      contextAwareToast.joinError(() => handleJoinChat(name));
-    } finally {
-      setIsJoining(false);
-    }
+    setJoinError('');
+    try { await joinChat(name); }
+    catch (failure) {
+      const message = failure instanceof Error ? failure.message : '';
+      setJoinError(message.includes('full') ? `The room is full (${MAX_USERS} people). Please try again later.`
+        : message.includes('tabs') || message.includes('connections') ? 'Too many active tabs. Close another chat tab and try again.'
+        : 'We couldn’t join the room. Check your connection and try again.');
+    } finally { setIsJoining(false); }
   };
+  const handleLeave = () => { leaveChat(); resetState(); setJoinError(''); };
 
-  const handleLeaveChat = () => {
-    leaveChat();
-    contextAwareToast.leaveSuccess();
-  };
-
-  // Handle connection status changes
-  useEffect(() => {
-    if (hasJoined) {
-      if (isConnected) {
-        // Connection established or restored
-        wasConnectedRef.current = true;
-        hasShownConnectionErrorRef.current = false;
-      } else if (wasConnectedRef.current && !hasShownConnectionErrorRef.current) {
-        // Connection lost after being connected
-        hasShownConnectionErrorRef.current = true;
-        contextAwareToast.connectionError(() => {
-          window.location.reload();
-        });
-      }
-    }
-  }, [isConnected, hasJoined]);
-
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] w-full grid place-items-center">
-        <div className="text-sm text-muted-foreground">Initializing secure session…</div>
-      </div>
-    );
-  }
-
-  if (authError) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] w-full grid place-items-center">
-        <div className="text-sm text-red-500">Authentication error: {authError}</div>
-      </div>
-    );
-  }
-
-  if (!hasJoined || !currentUser) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] w-full relative">
-        <div className="absolute top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
-        <NameInputForm onSubmit={handleJoinChat} isLoading={isJoining} />
-      </div>
-    );
-  }
-
-  return (
-    <LayoutWrapper>
-      <Header
-        userCount={users.length}
-        isConnected={isConnected}
-        currentUserName={currentUser.name}
-        onLeave={handleLeaveChat}
-        variant="default"
-        showNavigation={true}
-      />
-      <div className="flex-1 min-h-0">
-        <ChatContainer currentUser={currentUser} onLeave={handleLeaveChat} />
-      </div>
-
-    </LayoutWrapper>
-  );
+  if (isAuthLoading) return <main className="grid min-h-[100dvh] place-items-center p-6"><p role="status" className="text-sm text-muted-foreground">Initializing secure session…</p></main>;
+  if (authError) return <main className="grid min-h-[100dvh] place-items-center p-6">
+    <section aria-labelledby="session-error" className="max-w-md space-y-4">
+      <h1 id="session-error" className="text-xl font-semibold">We couldn’t start your session</h1>
+      <p role="alert" className="text-sm text-muted-foreground">Check your connection and try again. If the problem continues, please try again later.</p>
+      <Button className="h-11" onClick={() => window.location.reload()}>Try again</Button>
+    </section>
+  </main>;
+  if (!hasJoined || !currentUser) return <div className="relative">
+    <div className="absolute right-4 top-4"><ThemeToggle /></div>
+    <NameInputForm onSubmit={handleJoinChat} isLoading={isJoining} submitError={joinError} />
+  </div>;
+  return <LayoutWrapper>
+    <Header userCount={users.length} isConnected={isConnected} currentUserName={currentUser.name} onLeave={handleLeave} />
+    <main id="main-content" className="min-h-0 flex-1" tabIndex={-1} aria-label="Conversation">
+      <ChatContainer currentUser={currentUser} />
+    </main>
+  </LayoutWrapper>;
 }

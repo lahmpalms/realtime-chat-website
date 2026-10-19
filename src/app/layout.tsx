@@ -4,7 +4,6 @@ import { ThemeProvider } from "next-themes";
 import { EnhancedToaster } from "@/components/ui/enhanced-toaster";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { UserProvider } from "@/contexts/UserContext";
-import { LayoutProvider } from "@/contexts/LayoutContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -29,17 +28,14 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Real-time Chat",
   },
-  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
   themeColor: [
@@ -68,7 +64,6 @@ export default function RootLayout({
           bg-background 
           text-foreground
           selection:bg-primary/20
-          touch-pan-y
           overscroll-behavior-none
           sm:overscroll-behavior-auto
         `}
@@ -79,27 +74,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <LayoutProvider>
             <UserProvider>
               <ChatProvider>
-                <div className="
-                  min-h-screen 
-                  min-h-[100dvh]
-                  w-full 
-                  max-w-full
-                  flex 
-                  flex-col
-                  overflow-hidden
-                  relative
-                  supports-[height:100dvh]:min-h-[100dvh]
-                  supports-[height:100svh]:min-h-[100svh]
-                ">
-                  {children}
-                </div>
+                {children}
                 <EnhancedToaster />
               </ChatProvider>
             </UserProvider>
-          </LayoutProvider>
         </ThemeProvider>
       </body>
     </html>

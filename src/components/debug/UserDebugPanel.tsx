@@ -1,23 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ref, get, onValue, off } from 'firebase/database';
 import { database } from '@/lib/firebase';
+import type { User } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface DebugData {
-  firebaseUsers: any;
-  firebasePresence: any;
-  contextUsers: any[];
+  firebaseUsers: unknown;
+  firebasePresence: unknown;
+  contextUsers: User[];
   listeners: {
     usersListenerActive: boolean;
     presenceListenerActive: boolean;
   };
 }
 
-export function UserDebugPanel({ contextUsers }: { contextUsers: any[] }) {
+export function UserDebugPanel({ contextUsers }: { contextUsers: User[] }) {
   const [debugData, setDebugData] = useState<DebugData>({
     firebaseUsers: null,
     firebasePresence: null,
@@ -31,7 +32,7 @@ export function UserDebugPanel({ contextUsers }: { contextUsers: any[] }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Manual refresh function
-  const refreshFirebaseData = async () => {
+  const refreshFirebaseData = useCallback(async () => {
     if (!database) {
       console.log('❌ Database not initialized');
       return;
@@ -64,7 +65,7 @@ export function UserDebugPanel({ contextUsers }: { contextUsers: any[] }) {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [contextUsers]);
 
   // Setup real-time listeners for debugging
   useEffect(() => {
@@ -117,9 +118,9 @@ export function UserDebugPanel({ contextUsers }: { contextUsers: any[] }) {
   // Initial data fetch
   useEffect(() => {
     refreshFirebaseData();
-  }, []);
+  }, [refreshFirebaseData]);
 
-  const formatData = (data: any) => {
+  const formatData = (data: unknown) => {
     if (!data) return 'null';
     if (typeof data === 'object') {
       return JSON.stringify(data, null, 2);
@@ -127,7 +128,7 @@ export function UserDebugPanel({ contextUsers }: { contextUsers: any[] }) {
     return String(data);
   };
 
-  const getUserCount = (data: any) => {
+  const getUserCount = (data: unknown) => {
     if (!data || typeof data !== 'object') return 0;
     return Object.keys(data).length;
   };

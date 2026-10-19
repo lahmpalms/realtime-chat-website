@@ -44,7 +44,6 @@ export function useLayoutConflictDetection(): ConflictDetectionResult {
     const checkPositioningConflicts = () => {
       const fixedElements = document.querySelectorAll('[style*="position: fixed"], .fixed');
       const absoluteElements = document.querySelectorAll('[style*="position: absolute"], .absolute');
-      const stickyElements = document.querySelectorAll('[style*="position: sticky"], .sticky');
       
       if (fixedElements.length > 2 || absoluteElements.length > 3) {
         result.current.hasPositioningConflicts = true;
@@ -62,9 +61,11 @@ export function useLayoutConflictDetection(): ConflictDetectionResult {
       if (mobileElements.length > 0 && desktopElements.length > 0) {
         // Check if they overlap
         const hasOverlap = Array.from(mobileElements).some(mobile => 
-          Array.from(desktopElements).some(desktop => 
-            mobile.getBoundingClientRect().intersects(desktop.getBoundingClientRect())
-          )
+          Array.from(desktopElements).some(desktop => {
+            const a = mobile.getBoundingClientRect();
+            const b = desktop.getBoundingClientRect();
+            return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+          })
         );
         
         if (hasOverlap) {
@@ -132,7 +133,7 @@ export const layoutConflictUtils = {
   detectLayoutShift: (): boolean => {
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        if (entry.entryType === 'layout-shift' && (entry as any).value > 0.1) {
+        if (entry.entryType === 'layout-shift' && 'value' in entry && typeof entry.value === 'number' && entry.value > 0.1) {
           console.warn('Layout shift detected:', entry);
           return true;
         }

@@ -30,28 +30,24 @@ export const logger = {
   debug(message: string, fields?: LogFields) {
     const { logging } = getConfig();
     if (logging.enableConsole && shouldLog('debug')) {
-      // eslint-disable-next-line no-console
       console.debug('[debug]', message, fields ? consoleSafe([fields]) : '');
     }
   },
   info(message: string, fields?: LogFields) {
     const { logging } = getConfig();
     if (logging.enableConsole && shouldLog('info')) {
-      // eslint-disable-next-line no-console
       console.info('[info]', message, fields ? consoleSafe([fields]) : '');
     }
   },
   warn(message: string, fields?: LogFields) {
     const { logging } = getConfig();
     if (logging.enableConsole && shouldLog('warn')) {
-      // eslint-disable-next-line no-console
       console.warn('[warn]', message, fields ? consoleSafe([fields]) : '');
     }
   },
   error(message: string, fields?: LogFields) {
     const { logging } = getConfig();
     if (logging.enableConsole && shouldLog('error')) {
-      // eslint-disable-next-line no-console
       console.error('[error]', message, fields ? consoleSafe([fields]) : '');
     }
     // Remote logging hook (Sentry) wired later

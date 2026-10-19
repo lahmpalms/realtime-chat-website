@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "profiles": 200,
+    "retainedMessages": 1000,
+    "initialMessageCharacters": 500,
+    "activeUsers": 20
+  },
+  "executionConcurrencyPerFunction": 1,
+  "queueModel": "FIFO matching configured first-gen maxInstances; latency includes queue and retries",
+  "accepted": 100,
+  "retries": 0,
+  "p50Ms": 1074,
+  "p95Ms": 2627,
+  "maxMs": 2734,
+  "roomBytes": 151447,
+  "verifiedAt": "2026-10-19",
+  "environment": "Local macOS, Node 22.22.3, Firebase Auth/RTDB/Functions emulators; modeled first-gen FIFO, not a deployed benchmark"
+}

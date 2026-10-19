@@ -1,203 +1,96 @@
-# Real-time Chat Application
+# Real-time Chat
 
-A modern, responsive real-time chat application built with Next.js, TypeScript, Firebase Realtime Database, and Tailwind CSS.
+Next.js App Router, React, TypeScript, Firebase Anonymous Authentication and Realtime Database.
 
-## ✨ Features
+## Local setup
 
-- **Real-time Messaging**: Instant message delivery using Firebase Realtime Database
-- **User Management**: Simple name-based entry (no registration required)
-- **Typing Indicators**: See when other users are typing
-- **Online Presence**: Track who's currently online
-- **Emoji Support**: Built-in emoji picker for expressive messages
-- **Rate Limiting**: Prevents spam (5 messages per minute per user)
-- **Room Capacity**: Maximum 20 users per chat room
-- **Responsive Design**: Optimized for both desktop and mobile devices
-- **Dark/Light Theme**: Toggle between themes with system preference support
-- **Modern UI**: Clean interface using shadcn/ui components
+Use Node.js 22 (also specified in `.nvmrc` and the Firebase Functions runtime):
 
-## 🚀 Tech Stack
-
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Database**: Firebase Realtime Database
-- **Styling**: Tailwind CSS + shadcn/ui
-- **State Management**: React Context API + useReducer
-- **Icons**: Lucide React
-- **Notifications**: Sonner (toast notifications)
-- **Deployment**: Vercel
-
-## 📦 Installation
-
-1. Clone the repository:
-```bash
-git clone <your-repository-url>
-cd realtime-chat-app
+```sh
+nvm use
+npm ci
+npm ci --prefix functions
+cp .env.example .env.local
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+Replace the sample values in `.env.local` with your Firebase web app configuration. Enable Anonymous Authentication and create a Realtime Database in that project. `NEXT_PUBLIC_*` values are embedded in the browser bundle; never put service account credentials or server secrets in them. Builds and frontend route type generation require the API key, auth domain, project ID, database URL and app ID, and fail early if any are missing. These checks validate presence, not Firebase connectivity or credentials.
 
-3. Set up Firebase:
-   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com/)
-   - Enable Realtime Database
-   - Copy your Firebase configuration
-
-4. Configure environment variables:
-```bash
-cp .env.local.example .env.local
-```
-
-Edit `.env.local` with your Firebase credentials:
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef123456
-```
-
-5. Set up Firebase Database Rules:
-```json
-{
-  "rules": {
-    "chatRoom": {
-      "messages": {
-        ".read": true,
-        ".write": true,
-        "$messageId": {
-          ".validate": "newData.hasChildren(['userId', 'userName', 'text', 'timestamp']) && newData.child('text').isString() && newData.child('text').val().length <= 500"
-        }
-      },
-      "users": {
-        ".read": true,
-        ".write": true,
-        "$userId": {
-          ".validate": "newData.hasChildren(['id', 'name', 'joinedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 20"
-        }
-      },
-      "typing": {
-        ".read": true,
-        ".write": true
-      },
-      "metadata": {
-        ".read": true,
-        ".write": true
-      }
-    }
-  }
-}
-```
-
-6. Run the development server:
-```bash
+```sh
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Open http://localhost:3000. Firebase Functions credentials come from the Firebase/Google Cloud runtime or local Application Default Credentials, not the browser environment file.
 
-## 🏗️ Project Structure
+## Verification
 
-```
-src/
-├── app/
-│   ├── globals.css       # Global styles and CSS variables
-│   ├── layout.tsx        # Root layout with providers
-│   └── page.tsx          # Main application component
-├── components/
-│   ├── ui/              # shadcn/ui components
-│   ├── chat/            # Chat-specific components
-│   │   ├── ChatContainer.tsx
-│   │   ├── MessageList.tsx
-│   │   ├── MessageItem.tsx
-│   │   ├── MessageInput.tsx
-│   │   ├── EmojiPicker.tsx
-│   │   ├── UserList.tsx
-│   │   ├── TypingIndicator.tsx
-│   │   └── ConnectionStatus.tsx
-│   ├── layout/          # Layout components
-│   │   ├── Header.tsx
-│   │   └── ThemeToggle.tsx
-│   └── forms/
-│       └── NameInputForm.tsx
-├── lib/
-│   ├── firebase.ts      # Firebase configuration
-│   ├── types.ts         # TypeScript interfaces
-│   ├── utils.ts         # Utility functions
-│   └── hooks/           # Custom React hooks
-│       ├── useChat.ts
-│       ├── useUsers.ts
-│       └── useTyping.ts
-├── contexts/
-│   ├── ChatContext.tsx  # Chat state management
-│   └── UserContext.tsx  # User state management
+```sh
+npm run lint                 # Frontend and Functions source, zero warnings
+npm run typecheck            # Generate Next.js route types, then check frontend TypeScript
+npm run typecheck:functions  # Backend TypeScript
+npm run build:functions      # Emits functions/lib/index.js
+npm run build                # Next.js production build
+npm run check                # All checks above, sequentially
+npm run test:security        # Auth + RTDB + Functions emulator integration tests (Java 21+)
+npm run test:phase2          # Emulator tests plus all current Chromium scenarios
+npm run test:phase3          # Security/session regressions plus current browser scenarios
+npm run test:phase4          # Full security/retention/recovery, bounded-load and browser suite
+npm run test:phase5          # Release checks against a production build on three browser engines
+npm run db:backup -- ...     # Explicit project/output; see docs/operations.md
+npm run db:restore -- ...    # Guarded target plus mandatory safety backup
+npx playwright install chromium firefox webkit # One-time installation for the release suite
 ```
 
-## 🎯 Usage
+Run `npm run start` after a successful build to serve the production frontend locally. The Google font in `src/app/layout.tsx` requires network access during builds.
 
-1. **Enter Your Name**: Type your name (up to 20 characters) to join the chat
-2. **Start Chatting**: Send messages instantly to all connected users
-3. **Use Emojis**: Click the emoji button to add emojis to your messages
-4. **See Who's Online**: View the user list on the right sidebar
-5. **Watch Typing**: See when others are typing in real-time
-6. **Toggle Theme**: Click the theme toggle to switch between light and dark modes
+GitHub Actions runs the same checks on Node 22 after installing both lockfiles, plus security/retention/recovery integration tests, a bounded-load scenario and Chromium/Firefox/WebKit scenarios against a production build on local Firebase emulators and production dependency audits that reject high/critical advisories. CI uses `.env.example` only to compile the app; it does not test a live Firebase project or deploy anything. Configure actual environment values in the hosting provider before building a release. `NEXT_PUBLIC_APP_ENV` should be `staging` or `production` for the corresponding environment.
 
-## 🔧 Development
+## Firebase configuration
 
-### Available Scripts
+`firebase.json` declares the Node 22 Functions source, a predeploy build, database rules and local emulator ports. Functions use the `firebase-functions/v1` callable API; the entry point exports `joinRoom`, `leaveRoom`, `sendMessage`, the `onSessionDisconnected` cleanup trigger and `scheduledRetention` for cleanup/outbox recovery. Frontend hosting uses a Next.js-capable provider, such as Vercel; Firebase Hosting for Next.js is not configured here.
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
+Use the installed Firebase CLI with an explicit demo project (Node 22 and Java 21+):
 
-### Key Features Implementation
-
-- **Real-time Updates**: Uses Firebase onValue listeners for live data
-- **State Management**: React Context + useReducer pattern
-- **Type Safety**: Full TypeScript coverage with strict mode
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Error Handling**: Comprehensive error boundaries and user feedback
-- **Performance**: Optimized with React best practices and memoization
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. Connect your repository to Vercel
-2. Add environment variables in Vercel dashboard
-3. Deploy automatically on every push to main branch
-
-### Manual Deployment
-
-```bash
-npm run build
-npm run start
+```sh
+npm run build:functions
+npx firebase emulators:start --project demo-realtime-chat --only auth,database,functions
 ```
 
-## 📝 Environment Variables
+For a browser connected only to local emulators, set these values in `.env.local`, then run `npm run dev` in a second terminal:
 
-All environment variables should be prefixed with `NEXT_PUBLIC_` to be accessible in the browser:
+```env
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true
+NEXT_PUBLIC_FIREBASE_API_KEY=demo-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=demo-realtime-chat.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-realtime-chat
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://demo-realtime-chat-default-rtdb.firebaseio.com
+NEXT_PUBLIC_FIREBASE_APP_ID=demo-app
+```
 
-- `NEXT_PUBLIC_FIREBASE_API_KEY` - Your Firebase API key
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
-- `NEXT_PUBLIC_FIREBASE_DATABASE_URL` - Firebase Realtime Database URL
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID` - Firebase project ID
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` - Firebase storage bucket
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` - Firebase messaging sender ID
-- `NEXT_PUBLIC_FIREBASE_APP_ID` - Firebase app ID
+Auth, RTDB and callable Functions connect to localhost ports 9099, 9000 and 5001 respectively. Emulator mode requires a `demo-` project ID. The backend selects the same `-default-rtdb` namespace as the CLI rules and browser configuration. Set `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false` when configuring a real staging/production build. The automated security suite configures emulators itself and uses no live credentials.
 
-## 🤝 Contributing
+`joinRoom({ name, connectionId })` admits or renews a 90-second connection lease, enforcing up to 20 active UIDs and eight active connections per UID. The browser renews every 20 seconds and registers `onDisconnect` removal before admission. Each physical reconnection gets a new connection ID. Leaving removes only this tab's connection. Offline profiles retain their server-controlled identity, and expired connections cannot keep capacity reserved.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+`sendMessage({ text, requestId, connectionId })` atomically checks live membership, enforces five messages per UID/minute plus 100 room messages/minute and records a durable outbox intent. It then publishes to `chatMessages` outside that coordinator and acknowledges delivery. Retrying a retained original confirms it without charging again, even after the connection ends. Interrupted outbox work can be retried or repaired by scheduled retention. New IDs include a server-time-adjusted timestamp; expired unknown requests fail safely and keep the draft.
 
-## 📄 License
+History queries are indexed/limited to 50 records, with timestamp/key pagination and at most 200 rendered messages. The coordinator/archive retain at most 1000 message indexes, subject to a 24-hour TTL and five-minute scheduled cleanup. The profile cache retains at most 200 profiles, with seven-day expiry and inactive eviction. See `docs/phase-4.md` for semantics and limits.
 
-This project is open source and available under the [MIT License](LICENSE).
-# realtime-chat-website
+The composer stores text and the pending request ID in per-tab `sessionStorage`, retains them on errors/offline/reload, and clears them only on acknowledgement. Duplicate submits are blocked while a request is in flight. Editing the text creates a new request ID on the next send. Local storage availability is required for recovery across reload; in-memory drafts still work if storage is blocked.
+
+Database rules deny client profile creation/deletion, identity or lease changes, message writes and private quota reads. Clients may update typing/visibility on their own live connection or delete that connection. Shared reads require an unexpired server admission lease and a connection. The database predeploy guard checks that root read/write are both false; the full emulator/browser suite verifies the granular behavior.
+
+See `docs/phase-4.md` for the current data/submission protocol and verification, and `docs/operations.md` for monitoring, budget, migration and backup/restore activation. Earlier phase reports describe historical baselines.
+
+Cloud deployment, authentication setup, billing and the real deployed rules have not been verified by the local build checks. The owner will test the real environment; no cloud deployment is included in this handoff. See `docs/phase-5.md`.
+
+## Production roadmap
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 0 | Reproducible installs, patched dependencies, FE/BE build, types, lint, env example, deployment configuration and basic CI | Complete; see `docs/phase-0.md` for verification |
+| 1 | Database authorization, server message flow, atomic rate limits/capacity, emulator rules tests | Complete; see `docs/phase-1.md` |
+| 2 | Presence lifecycle, reconnect, multiple tabs, send result and retry correctness | Complete; see `docs/phase-2.md` |
+| 3 | Thai names, composer UX, scroll, mobile layout, accessibility and error states | Complete locally; see `docs/phase-3.md` |
+| 4 | Bounded queries, pagination/indexes, retention, monitoring, cost alerts and backup/restore | Complete locally; cloud activation/validation in Phase 5. See `docs/phase-4.md` |
+| 5 | Release regression, security hardening and owner test handoff | Complete locally; cloud/device acceptance remains with the owner. See `docs/phase-5.md` |
+
+All six code phases (0–5) are complete locally. The owner requested a push to `main` and will test the real environment; this does not certify a public production launch. Remaining acceptance work includes actual cloud configuration, monitoring/budget/backup activation, deployed load/cost measurements, physical mobile devices and native screen readers. Local Chromium, Firefox and WebKit checks cover desktop browser engines, not those physical-device checks. Remaining development-tool advisories are recorded in `docs/phase-5.md`.

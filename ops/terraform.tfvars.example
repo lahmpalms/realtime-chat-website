@@ -1,0 +1,6 @@
+# Copy to an ignored .tfvars file and choose actual staging values before planning.
+project_id         = "replace-with-staging-project"
+billing_account    = "000000-000000-000000"
+notification_email = "operations@example.com"
+backup_location    = "US"
+monthly_budget_usd = 10

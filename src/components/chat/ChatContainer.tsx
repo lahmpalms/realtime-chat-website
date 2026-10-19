@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useCallback } from "react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useChat } from "@/lib/hooks/useChat";
-import { useTyping } from "@/lib/hooks/useTyping";
+import { useMessageHistory } from '@/lib/hooks/useMessageHistory';
+import { useUser } from "@/contexts/UserContext";
 import { User } from "@/lib/types";
-import { useStablePresence } from "@/lib/hooks/useStablePresence";
-import { toast } from "sonner";
-// Removed unused sidebar UI imports
 import {
   ResponsiveChatWrapper,
   ResponsiveChatContent,
@@ -24,88 +22,14 @@ interface ChatContainerProps {
 }
 
 export function ChatContainer({ currentUser }: ChatContainerProps) {
-  const {
-    messages,
-    // users,
-    typing,
-    isConnected,
-    isLoading,
-    error,
-    sendMessage,
-    setUserTyping,
-    initializeListeners,
-    leaveRoom,
-  } = useChat();
-
-  const [messageRateLimit, setMessageRateLimit] = useState<number[]>([]);
-  // const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const typingHook = useTyping(currentUser.id, currentUser.name);
-  const stablePresenceHook = useStablePresence(currentUser);
-
-  // Store current user info in refs to prevent unnecessary re-renders
-  const currentUserRef = useRef(currentUser);
-  currentUserRef.current = currentUser;
-
-  // Initialize listeners only once
+  const { messages, hasLoadedMessages, typing, isConnected, isLoading, error, sendMessage, initializeListeners } = useChat();
+  const history = useMessageHistory(isConnected, currentUser.id);
+  const { setTyping, recoverSession } = useUser();
   useEffect(() => {
-    const cleanup = initializeListeners();
-    return cleanup;
-  }, [initializeListeners]);
-
-  // Cleanup on unmount (separate effect)
-  useEffect(() => {
-    return () => {
-      // Cleanup typing and stable presence
-      typingHook.cleanup();
-      stablePresenceHook.cleanup();
-      // Leave room when component unmounts
-      leaveRoom(currentUser.id);
-    };
-  }, [typingHook, stablePresenceHook, leaveRoom, currentUser.id]);
-
-  // Note: Heartbeat is now handled by stablePresenceHook
-  // No need for separate heartbeat system
-
-  const handleSendMessage = useCallback(
-    async (text: string) => {
-      const now = Date.now();
-      const oneMinuteAgo = now - 60000;
-
-      const recentMessages = messageRateLimit.filter(
-        (timestamp) => timestamp > oneMinuteAgo
-      );
-
-      if (recentMessages.length >= 5) {
-        toast.error(
-          "You are sending messages too quickly. Please wait a moment."
-        );
-        return;
-      }
-
-      try {
-        const user = currentUserRef.current;
-        await sendMessage(text, user.id, user.name, user.color);
-        setMessageRateLimit([...recentMessages, now]);
-        typingHook.stopTyping();
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        toast.error("Failed to send message. Please try again.");
-      }
-    },
-    [messageRateLimit, sendMessage, typingHook]
-  ); // Include full typingHook object
-
-  const handleTyping = useCallback(() => {
-    typingHook.startTyping();
-    const user = currentUserRef.current;
-    setUserTyping(user.id, user.name, true);
-  }, [typingHook, setUserTyping]); // Include full typingHook object
-
-  const handleStopTyping = useCallback(() => {
-    typingHook.stopTyping();
-    const user = currentUserRef.current;
-    setUserTyping(user.id, user.name, false);
-  }, [typingHook, setUserTyping]); // Include full typingHook object
+    if (isConnected) return initializeListeners();
+  }, [isConnected, initializeListeners]);
+  const handleTyping = useCallback(() => setTyping(true), [setTyping]);
+  const handleStopTyping = useCallback(() => setTyping(false), [setTyping]);
 
   return (
     <ResponsiveChatWrapper>
@@ -117,6 +41,7 @@ export function ChatContainer({ currentUser }: ChatContainerProps) {
               isConnected={isConnected}
               isLoading={isLoading}
               error={error}
+              onRetry={recoverSession}
             />
           </ResponsiveStatusContainer>
         )}
@@ -127,13 +52,17 @@ export function ChatContainer({ currentUser }: ChatContainerProps) {
             messages={messages}
             currentUserId={currentUser.id}
             typing={typing}
+            isLoading={!hasLoadedMessages}
+            history={history}
           />
         </ResponsiveMessageContainer>
 
         {/* Message Input */}
         <ResponsiveInputContainer>
           <MessageInput
-            onSendMessage={handleSendMessage}
+            key={currentUser.id}
+            onSendMessage={sendMessage}
+            userId={currentUser.id}
             onTyping={handleTyping}
             onStopTyping={handleStopTyping}
             disabled={!isConnected || isLoading}

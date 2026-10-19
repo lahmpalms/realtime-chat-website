@@ -1,0 +1,45 @@
+name: Build and static checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # Build-only configuration; these values never connect to a live Firebase project.
+      - run: cp .env.example .env.local
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:phase5
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --prefix functions --omit=dev --audit-level=high
+
+  operations-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.6'
+      - run: terraform -chdir=ops fmt -check
+      - run: terraform -chdir=ops init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=ops validate

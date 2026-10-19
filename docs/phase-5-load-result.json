@@ -1,0 +1,16 @@
+{
+  "fixture": {
+    "profiles": 200,
+    "retainedMessages": 1000,
+    "initialMessageCharacters": 500,
+    "activeUsers": 20
+  },
+  "executionConcurrencyPerFunction": 1,
+  "queueModel": "FIFO matching configured first-gen maxInstances; latency includes queue and retries",
+  "accepted": 100,
+  "retries": 0,
+  "p50Ms": 1054,
+  "p95Ms": 2331,
+  "maxMs": 2452,
+  "roomBytes": 151447
+}

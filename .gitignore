@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/functions/node_modules
+/functions/lib
 /.pnp
 .pnp.*
 .yarn/*
@@ -29,9 +31,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*-debug.log
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +43,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Browser verification artifacts
+/test-results/
+/playwright-report/
+
+# Private database exports and local operations state
+/backups/
+/ops/.terraform/
+/ops/*.tfstate*
+/ops/*.tfvars
+/ops/*.tfplan

@@ -1,67 +1,65 @@
-import * as functions from 'firebase-functions';
+import { controlTransaction } from './utils/controlTransaction';
+import * as functions from 'firebase-functions/v1';
+import { createHash } from 'node:crypto';
 import Filter from 'bad-words';
 import { getDb } from './utils/database';
 import { assertAuthedContext } from './utils/auth';
-
-const MAX_LENGTH = 500;
-const MAX_PER_MINUTE = 5;
-
+import { Room, StoredMessage, pruneRoom, requestTime, MESSAGE_TTL_MS, REQUEST_CLOCK_SKEW_MS, publishMessage, drainDeletes, readAcknowledgements, cleanAcknowledgements } from './retention';
+import { callable } from './observability';
+import { payload, assertConnectionId, isLive } from './sessions';
 const filter = new Filter();
 
-async function getRateLimits(uid: string) {
-  const snap = await getDb().ref(`rateLimits/${uid}`).get();
-  return (snap.val() as any) || {};
-}
-
-async function setRateLimits(uid: string, data: any) {
-  await getDb().ref(`rateLimits/${uid}`).set(data);
-}
-
-export const validateMessage = functions.https.onCall(async (data, context) => {
+export const sendMessage = callable('sendMessage', async (data: unknown, context) => {
   const uid = assertAuthedContext(context);
-  const text: string = (data?.text || '').toString();
-  const now = Date.now();
-
-  if (!text || typeof text !== 'string') {
-    throw new functions.https.HttpsError('invalid-argument', 'Message text is required');
+  const { text, requestId, connectionId } = payload(data, ['text', 'requestId', 'connectionId']);
+  assertConnectionId(connectionId);
+  if (typeof text !== 'string' || !text.trim() || text.trim().length > 500 || typeof requestId !== 'string' || !/^[A-Za-z0-9_-]{16,64}$/.test(requestId)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid message text or request ID');
   }
   const trimmed = text.trim();
-  if (trimmed.length < 1 || trimmed.length > MAX_LENGTH) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid message length');
+  if (filter.isProfane(trimmed)) throw new functions.https.HttpsError('failed-precondition', 'Message contains inappropriate content');
+  const db = getDb();
+  const id = `${uid}_${requestId}`;
+  const existing = (await db.ref(`chatMessages/${id}`).get()).val() as StoredMessage | null;
+  if (existing) {
+    if (existing.userId !== uid || existing.text !== trimmed) throw new functions.https.HttpsError('already-exists', 'Request ID already used for another message');
+    return existing;
   }
-  if (filter.isProfane(trimmed)) {
-    await getDb().ref(`rateLimits/${uid}/violations`).transaction((v) => (v || 0) + 1);
-    throw new functions.https.HttpsError('failed-precondition', 'Message contains inappropriate content');
-  }
-
-  const limits = await getRateLimits(uid);
-  const messageTimes: number[] = Array.isArray(limits.messages) ? limits.messages : [];
-  const recent = messageTimes.filter((t) => now - t < 60000);
-  if (recent.length >= MAX_PER_MINUTE) {
-    const retryAfter = 60000 - (now - recent[0]);
-    return { ok: false, code: 'rate_limited', retryAfterMs: retryAfter };
-  }
-
-  recent.push(now);
-  await setRateLimits(uid, { ...limits, messages: recent.slice(-MAX_PER_MINUTE) });
-  return { ok: true };
-});
-
-export const onMessageWrite = functions.database.ref('/chatRoom/messages/{messageId}')
-  .onWrite(async (change, context) => {
-    const after = change.after.val();
-    if (!after) return null;
-    const text: string = (after.text || '').toString();
-    if (filter.isProfane(text)) {
-      // Redact message text
-      await change.after.ref.update({ text: '[redacted]' });
-      await getDb().ref(`moderation/logs/${context.params.messageId}`).set({
-        at: Date.now(),
-        reason: 'profanity',
-        userId: after.userId,
-      });
-    }
-    return null;
+  const hash = createHash('sha256').update(trimmed).digest('hex');
+  const acknowledgements = await readAcknowledgements();
+  const result = await controlTransaction('chatRoom', (current: Room | null) => {
+    const room = pruneRoom(current, Date.now(), acknowledgements.published, acknowledgements.deleted);
+    const now = Date.now();
+    if (room.receipts?.[id]) return room;
+    const member = room.users?.[uid];
+    if (!member || !isLive(member.connections?.[connectionId], now)) return room;
+    const created = requestTime(requestId);
+    if (!created || created <= (room.metadata?.requestFloor || 0) || created <= now - MESSAGE_TTL_MS || created > now + REQUEST_CLOCK_SKEW_MS) return room;
+    const recent = room.rateLimits?.[uid]?.messages || [];
+    const global = room.roomRateLimit?.messages || [];
+    if (recent.length >= 5 || global.length >= 100 || Object.keys(room.outbox || {}).length >= 100 || Object.keys(room.deleteQueue || {}).length >= 1000) return room;
+    const message: StoredMessage = { id, userId: uid, userName: member.name, userColor: member.color, text: trimmed, timestamp: now };
+    return pruneRoom({ ...room, outbox: { ...room.outbox, [id]: message }, messageIndex: { ...room.messageIndex, [id]: now },
+      receipts: { ...room.receipts, [id]: { hash, timestamp: now, created } }, rateLimits: { ...room.rateLimits, [uid]: { messages: [...recent, now] } }, roomRateLimit: { messages: [...global, now] } }, now);
   });
-
-
+  if (!result.committed) throw new functions.https.HttpsError('aborted', 'Message could not be committed. Please retry.');
+  const room = (result.snapshot.val() || {}) as Room;
+  await cleanAcknowledgements(room, acknowledgements);
+  const receipt = room.receipts?.[id];
+  if (receipt) {
+    if (receipt.hash !== hash) throw new functions.https.HttpsError('already-exists', 'Request ID already used for another message');
+    const queued = room.outbox?.[id];
+    const saved = queued ? await publishMessage(queued) : (await db.ref(`chatMessages/${id}`).get()).val() as StoredMessage | null;
+    if (!saved) throw new functions.https.HttpsError('aborted', 'Delivery is pending. Please retry this saved message.');
+    await drainDeletes();
+    return saved;
+  }
+  if (!isLive(room.users?.[uid]?.connections?.[connectionId])) throw new functions.https.HttpsError('failed-precondition', 'Reconnect to the room before sending messages', { reason: 'session-expired' });
+  const created = requestTime(requestId);
+  if (!created || created <= (room.metadata?.requestFloor || 0) || created <= Date.now() - MESSAGE_TTL_MS || created > Date.now() + REQUEST_CLOCK_SKEW_MS) {
+    throw new functions.https.HttpsError('failed-precondition', 'This saved send has expired or its time is invalid. Edit the message before sending it again.', { reason: 'request-expired' });
+  }
+  const recent = (room.roomRateLimit?.messages || []).length >= 100 ? room.roomRateLimit!.messages : room.rateLimits?.[uid]?.messages || [];
+  const retryAfterMs = recent.length ? Math.max(1, 60_000 - (Date.now() - Math.min(...recent))) : 5000;
+  throw new functions.https.HttpsError('resource-exhausted', 'The room is busy or the message limit was reached. Please wait and retry.', { retryAfterMs });
+});
